@@ -4,42 +4,68 @@ Point d'entrée principal de l'API FastAPI
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import logging
 
 from app.config import settings, verify_setup
 from app.ml.predictor import predictor
-from app.api.predictions import router as predictions_router
+
+# Configuration du logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Gère le cycle de vie de l'application"""
-    # Startup
-    print("🚀 Démarrage de l'application...")
+    """
+    Gestion du cycle de vie de l'application
+    Exécuté au démarrage et à l'arrêt
+    """
+    # 🚀 STARTUP
+    logger.info("=" * 50)
+    logger.info("🚀 Démarrage de l'API Fraud Detection...")
+    logger.info("=" * 50)
     
     # Vérifie la configuration
-    verify_setup()
+    try:
+        verify_setup()
+    except Exception as e:
+        logger.error(f"❌ Erreur de configuration : {e}")
+        raise
     
     # Charge les modèles ML
-    print("📦 Chargement des modèles ML...")
-    predictor.load_models()
+    logger.info("📦 Chargement des modèles ML...")
+    success = predictor.load_models()
     
-    print("✅ Application prête !")
+    if not success:
+        logger.error("❌ Échec du chargement des modèles ML")
+        raise RuntimeError("Impossible de charger les modèles ML")
     
-    yield
+    logger.info("=" * 50)
+    logger.info("✅ API prête ! Serveur démarré avec succès")
+    logger.info(f"📍 Environnement : {'DEBUG' if settings.DEBUG else 'PRODUCTION'}")
+    logger.info(f"🔗 Documentation : http://localhost:{settings.API_PORT}/docs")
+    logger.info("=" * 50)
     
-    # Shutdown
-    print("👋 Arrêt de l'application...")
+    yield  # L'application tourne ici
+    
+    # 🛑 SHUTDOWN
+    logger.info("🛑 Arrêt de l'API...")
 
 
-# Crée l'application FastAPI
+# Création de l'application FastAPI
 app = FastAPI(
     title=settings.APP_NAME,
-    description="API de détection de fraude électrique avec Machine Learning",
+    description="API de détection de fraude électrique par analyse ML",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
-# Configure CORS (pour permettre les requêtes depuis React)
+# Configuration CORS (pour permettre les requêtes depuis le frontend)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
@@ -48,13 +74,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Enregistre les routes
-app.include_router(predictions_router)
 
+# ========== ROUTES DE BASE ==========
 
 @app.get("/")
 async def root():
-    """Endpoint racine - Info sur l'API"""
+    """Route racine - Information API"""
     return {
         "message": "🔍 Fraud Detection API",
         "version": "1.0.0",
@@ -71,6 +96,43 @@ async def root():
 
 
 @app.get("/health")
-async def health():
-    """Health check simple"""
-    return {"status": "healthy"}
+async def health_check():
+    """Health check basique"""
+    return {
+        "status": "healthy",
+        "service": "fraud-detection-api"
+    }
+
+
+# ========== IMPORT DES ROUTES ==========
+# Import après création de app pour éviter circular imports
+from app.api.predictions import router as predictions_router
+
+# Enregistre les routes
+app.include_router(
+    predictions_router,
+    prefix="/api/predictions",
+    tags=["Predictions"]
+)
+
+
+# ========== GESTION DES ERREURS ==========
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    """Gestion globale des erreurs"""
+    logger.error(f"❌ Erreur globale : {exc}")
+    return {
+        "error": "Internal Server Error",
+        "detail": str(exc) if settings.DEBUG else "Une erreur est survenue"
+    }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=settings.API_PORT,
+        reload=settings.DEBUG
+    )
