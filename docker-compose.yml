@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # ========== BASE DE DONNÉES ==========
+  postgres:
+    image: postgres:15-alpine
+    container_name: fraud-db
+    environment:
+      POSTGRES_USER: fraud_user
+      POSTGRES_PASSWORD: fraud_password
+      POSTGRES_DB: fraud_detection
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fraud_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fraud-network
+
+  # ========== BACKEND API ==========
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fraud-backend
+    environment:
+      - DATABASE_URL=postgresql://fraud_user:fraud_password@postgres:5432/fraud_detection
+      - DEBUG=True
+      - API_PORT=8000
+    volumes:
+      - ./backend:/app
+      - ./backend/app/ml/models:/app/app/ml/models  # Mount modèles ML
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fraud-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ========== FRONTEND REACT ==========
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fraud-frontend
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Évite de remonter node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - fraud-network
+    command: npm run dev -- --host 0.0.0.0
+
+# ========== VOLUMES ==========
+volumes:
+  postgres_data:
+    driver: local
+
+# ========== NETWORKS ==========
+networks:
+  fraud-network:
+    driver: bridge

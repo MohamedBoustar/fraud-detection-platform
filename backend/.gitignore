@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+
+# Environnement
+.env
+.env.local
+
+# Base de données
+*.db
+*.sqlite3
+
+# Modèles ML (trop gros pour Git)
+*.pkl
+*.joblib
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
