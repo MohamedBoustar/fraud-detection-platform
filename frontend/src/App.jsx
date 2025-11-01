@@ -1,6 +1,8 @@
 import React from 'react';
 import Navbar from './components/layout/Navbar';
 import BatchPage from './pages/BatchPage';
+import ClientDetailsPage from './pages/ClientDetailsPage';
+
 
 function App() {
   // Simple routing basé sur window.location
@@ -14,6 +16,9 @@ function App() {
 
   // Render selon la route
   const renderPage = () => {
+    if (path.startsWith('/client/')) {
+      return <ClientDetailsPage />;
+    }
     if (path === '/batch') {
       return <BatchPage />;
     }

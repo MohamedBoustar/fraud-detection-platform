@@ -5,7 +5,19 @@ import React, { useState, useMemo } from 'react';
 import RiskBadge from '../common/RiskBadge';
 import { formatPredictionLabel, formatPercentage, formatNumber } from '../../utils/formatters';
 
+
+
+
 const BatchResults = ({ data }) => {
+  // Fonction pour naviguer vers le détail client
+  const handleViewClient = (item) => {
+    // Stocke les données du client dans localStorage
+    localStorage.setItem('selectedClient', JSON.stringify(item));
+    
+    // Navigation
+    window.location.href = `/client/${item.cons_no || item.index}`;
+  };
+  
   const [filter, setFilter] = useState('all'); // 'all', 'fraud', 'normal'
   const [sortBy, setSortBy] = useState('probability'); // 'probability', 'cons_no'
   const [sortOrder, setSortOrder] = useState('desc'); // 'asc', 'desc'
@@ -175,6 +187,9 @@ const BatchResults = ({ data }) => {
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                 Niveau de Risque
               </th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                 Actions
+               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -211,6 +226,15 @@ const BatchResults = ({ data }) => {
                   <td className="px-4 py-3 text-sm">
                     <RiskBadge riskLevel={item.risk_level} size="sm" />
                   </td>
+                  <td className="px-4 py-3 text-sm">
+                     <button
+                       onClick={() => handleViewClient(item)}
+                       className="text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                           👁️ Voir
+                        </button>
+                    </td>
+                  
                 </tr>
               );
             })}
