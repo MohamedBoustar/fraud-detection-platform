@@ -142,8 +142,14 @@ class FraudPredictor:
                 features_only = features_df
             
             # Vérifie les colonnes
-            expected_features = self.preprocessor.feature_names
-            features_only = features_only[expected_features]
+            # ⭐ Vérifie et réordonne les colonnes selon le scaler
+            if hasattr(self.scaler, 'feature_names_in_'):
+              expected_order = list(self.scaler.feature_names_in_)
+            else:
+              expected_order = self.preprocessor.feature_names
+
+            # Réordonne les features
+            features_only = features_only[expected_order]
             
             # Applique le scaler
             features_scaled = self.scaler.transform(features_only)

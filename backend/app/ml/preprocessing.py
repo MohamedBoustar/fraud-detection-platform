@@ -176,7 +176,20 @@ class FraudPreprocessor:
             features_list.append(features)
         
         # Crée DataFrame
+        # Crée DataFrame
         features_df = pd.DataFrame(features_list)
+
+# ⭐ IMPORTANT : Réordonne les colonnes selon l'ordre du modèle
+        feature_order = [
+            'mean_consumption', 'std_consumption', 'median_consumption',
+            'max_consumption', 'cv', 'zero_ratio', 'zero_days',
+             'trend', 'n_peaks', 'max_consecutive_zeros',
+             'skewness', 'kurtosis', 'q25', 'q75', 'iqr'
+                                ]
+
+# Réordonne + garde CONS_NO et FLAG si présents
+        other_cols = [col for col in features_df.columns if col not in feature_order]
+        features_df = features_df[other_cols + feature_order]
         
         # Métadonnées
         metadata = {
