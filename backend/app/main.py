@@ -5,6 +5,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
+from app.database import init_db
+
 
 from app.config import settings, verify_setup
 from app.ml.predictor import predictor
@@ -42,6 +44,9 @@ async def lifespan(app: FastAPI):
     if not success:
         logger.error("❌ Échec du chargement des modèles ML")
         raise RuntimeError("Impossible de charger les modèles ML")
+    
+    # ⭐ NOUVEAU : Initialise la base de données
+    init_db()
     
     logger.info("=" * 50)
     logger.info("✅ API prête ! Serveur démarré avec succès")
