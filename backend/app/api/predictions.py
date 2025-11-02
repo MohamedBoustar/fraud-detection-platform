@@ -369,3 +369,34 @@ async def get_global_statistics(db: Session = Depends(get_db)):
     Récupère les statistiques globales de la plateforme
     """
     return db_service.get_global_stats(db)
+
+@router.delete("/batch/{batch_id}")
+async def delete_batch(
+    batch_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Supprime un batch et toutes ses prédictions associées
+    """
+    batch = db_service.get_batch_by_id(db, batch_id)
+    
+    if not batch:
+        raise HTTPException(status_code=404, detail=f"Batch {batch_id} non trouvé")
+    
+    try:
+        # Supprime le batch (les prédictions seront supprimées en cascade)
+        db.delete(batch)
+        db.commit()
+        
+        logger.info(f"🗑️ Batch supprimé : {batch.filename} (ID: {batch_id})")
+        
+        return {
+            "success": True,
+            "message": f"Batch {batch.filename} supprimé avec succès",
+            "batch_id": batch_id
+        }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Erreur suppression batch : {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la suppression : {str(e)}")

@@ -2,6 +2,8 @@ import React from 'react';
 import Navbar from './components/layout/Navbar';
 import BatchPage from './pages/BatchPage';
 import ClientDetailsPage from './pages/ClientDetailsPage';
+import HistoryPage from './pages/HistoryPage';
+
 
 
 function App() {
@@ -22,6 +24,9 @@ function App() {
     if (path === '/batch') {
       return <BatchPage />;
     }
+    if (path === '/history') {
+    return <HistoryPage />;
+  }
 
     // Page d'accueil par défaut
     return (

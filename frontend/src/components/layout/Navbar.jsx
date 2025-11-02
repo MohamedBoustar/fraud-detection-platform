@@ -88,6 +88,12 @@ const Navbar = () => {
             >
               📊 Dashboard
             </a>
+            <a
+            href="/history"
+            className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+          >
+            📜 Historique
+          </a>
           </div>
 
           {/* Statut & Documentation */}
