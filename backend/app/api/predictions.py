@@ -1,14 +1,19 @@
 """
 Routes API pour les prédictions de fraude
+Avec intégration base de données PostgreSQL
 """
-from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Depends
+from sqlalchemy.orm import Session
 from typing import List, Optional
 import pandas as pd
 import io
 import logging
+import os
 
 from app.ml.predictor import predictor
 from app.ml.preprocessing import FraudPreprocessor
+from app.database import get_db
+from app.services import db_service
 
 logger = logging.getLogger(__name__)
 
@@ -79,10 +84,12 @@ async def get_features_info():
 @router.post("/batch")
 async def predict_batch(
     file: UploadFile = File(...),
-    threshold: Optional[float] = Query(None, ge=0.0, le=1.0, description="Seuil de décision (0-1)")
+    threshold: Optional[float] = Query(None, ge=0.0, le=1.0, description="Seuil de décision (0-1)"),
+    db: Session = Depends(get_db)
 ):
     """
     Prédiction batch : Upload un CSV et obtient les prédictions
+    ⭐ NOUVEAU : Sauvegarde automatiquement dans PostgreSQL
     
     Format CSV attendu :
     - Colonne CONS_NO (obligatoire) : ID unique du client
@@ -104,6 +111,7 @@ async def predict_batch(
         # Lit le CSV
         logger.info(f"📤 Upload fichier : {file.filename}")
         contents = await file.read()
+        file_size_mb = len(contents) / (1024 * 1024)
         df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
         
         logger.info(f"📊 Fichier chargé : {len(df)} clients, {len(df.columns)} colonnes")
@@ -123,9 +131,52 @@ async def predict_batch(
         
         logger.info(f"🎯 Prédictions : {fraud_count}/{len(results)} fraudeurs ({fraud_percentage:.1f}%)")
         
+        # ⭐ NOUVEAU : Sauvegarde dans la base de données
+        batch_id = None
+        try:
+            # Prépare les données avec features
+            predictions_data = []
+            for result in results:
+                # Récupère les features depuis features_df
+                cons_no = result.get('cons_no', result.get('index'))
+                feature_row = features_df[features_df['CONS_NO'] == cons_no].iloc[0] if 'CONS_NO' in features_df.columns else None
+                
+                pred_dict = {
+                    'cons_no': cons_no,
+                    'prediction': result['prediction'],
+                    'probability': result['probability'],
+                    'risk_level': result['risk_level']
+                }
+                
+                # Ajoute les 15 features
+                if feature_row is not None:
+                    for feature in preprocessor.feature_names:
+                        if feature in feature_row:
+                            pred_dict[feature] = float(feature_row[feature])
+                
+                predictions_data.append(pred_dict)
+            
+            # Sauvegarde le batch complet
+            batch_id = db_service.save_batch_predictions(
+                db=db,
+                filename=file.filename,
+                file_size_mb=file_size_mb,
+                predictions_data=predictions_data,
+                threshold_used=threshold if threshold else 0.5,
+                data_period_days=metadata.get('data_days')
+            )
+            
+            logger.info(f"💾 Batch sauvegardé en DB avec ID : {batch_id}")
+            
+        except Exception as db_error:
+            logger.error(f"❌ Erreur sauvegarde DB : {db_error}")
+            # Continue même si la sauvegarde échoue
+        
         return {
             "success": True,
             "filename": file.filename,
+            "batch_id": batch_id,
+            "saved_to_db": batch_id is not None,
             "metadata": metadata,
             "summary": {
                 "total_clients": len(results),
@@ -134,7 +185,7 @@ async def predict_batch(
                 "normal_count": len(results) - fraud_count
             },
             "predictions": results,
-            "threshold_used": threshold or predictor.preprocessor.min_days
+            "threshold_used": threshold if threshold else 0.5
         }
         
     except ValueError as e:
@@ -149,10 +200,12 @@ async def predict_batch(
 @router.post("/realtime")
 async def predict_realtime(
     features: dict,
-    threshold: Optional[float] = Query(None, ge=0.0, le=1.0)
+    threshold: Optional[float] = Query(None, ge=0.0, le=1.0),
+    db: Session = Depends(get_db)
 ):
     """
     Prédiction en temps réel pour UN client
+    ⭐ NOUVEAU : Sauvegarde automatiquement dans PostgreSQL
     
     Body JSON attendu (15 features) :
     {
@@ -182,6 +235,32 @@ async def predict_realtime(
         
         logger.info(f"🎯 Prédiction temps réel : {result['label']} (prob={result['probability']:.3f})")
         
+        # ⭐ NOUVEAU : Sauvegarde dans la base de données
+        try:
+            cons_no = features.get('cons_no', f"REALTIME_{result.get('timestamp', 'unknown')}")
+            
+            # Récupère ou crée le client
+            client = db_service.get_or_create_client(db, cons_no)
+            
+            # Crée la prédiction
+            db_service.create_prediction(
+                db=db,
+                client_id=client.id,
+                prediction=result['prediction'],
+                probability=result['probability'],
+                risk_level=result['risk_level'],
+                threshold_used=threshold if threshold else 0.5,
+                source="realtime",
+                features=features
+            )
+            
+            logger.info(f"💾 Prédiction realtime sauvegardée pour {cons_no}")
+            result['saved_to_db'] = True
+            
+        except Exception as db_error:
+            logger.error(f"❌ Erreur sauvegarde DB : {db_error}")
+            result['saved_to_db'] = False
+        
         return {
             "success": True,
             "result": result
@@ -194,3 +273,99 @@ async def predict_realtime(
     except Exception as e:
         logger.error(f"❌ Erreur prédiction temps réel : {e}")
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {str(e)}")
+
+
+# ========== NOUVEAUX ENDPOINTS - BASE DE DONNÉES ==========
+
+@router.get("/history/{cons_no}")
+async def get_client_history(
+    cons_no: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Récupère l'historique complet des prédictions d'un client
+    """
+    history = db_service.get_client_history(db, cons_no)
+    
+    if not history:
+        raise HTTPException(status_code=404, detail=f"Client {cons_no} non trouvé")
+    
+    return history
+
+
+@router.get("/batch/{batch_id}")
+async def get_batch_details(
+    batch_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Récupère les détails d'un batch et toutes ses prédictions
+    """
+    batch = db_service.get_batch_by_id(db, batch_id)
+    
+    if not batch:
+        raise HTTPException(status_code=404, detail=f"Batch {batch_id} non trouvé")
+    
+    predictions = db_service.get_predictions_by_batch(db, batch_id)
+    
+    return {
+        "batch": {
+            "id": batch.id,
+            "filename": batch.filename,
+            "file_size_mb": batch.file_size_mb,
+            "upload_timestamp": batch.upload_timestamp,
+            "total_clients": batch.total_clients,
+            "fraud_detected": batch.fraud_detected,
+            "fraud_percentage": batch.fraud_percentage,
+            "threshold_used": batch.threshold_used,
+            "status": batch.status
+        },
+        "predictions": [
+            {
+                "cons_no": p.client.cons_no,
+                "prediction": p.prediction,
+                "probability": p.probability,
+                "risk_level": p.risk_level,
+                "created_at": p.created_at
+            }
+            for p in predictions
+        ]
+    }
+
+
+@router.get("/batches")
+async def list_batches(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """
+    Liste tous les batches uploadés (avec pagination)
+    """
+    batches = db_service.get_all_batches(db, skip=skip, limit=limit)
+    
+    return {
+        "total": len(batches),
+        "skip": skip,
+        "limit": limit,
+        "batches": [
+            {
+                "id": b.id,
+                "filename": b.filename,
+                "upload_timestamp": b.upload_timestamp,
+                "total_clients": b.total_clients,
+                "fraud_detected": b.fraud_detected,
+                "fraud_percentage": b.fraud_percentage,
+                "status": b.status
+            }
+            for b in batches
+        ]
+    }
+
+
+@router.get("/stats")
+async def get_global_statistics(db: Session = Depends(get_db)):
+    """
+    Récupère les statistiques globales de la plateforme
+    """
+    return db_service.get_global_stats(db)
