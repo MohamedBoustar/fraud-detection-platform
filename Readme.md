@@ -163,7 +163,7 @@ fraud-detection-platform/
 
 ## 👤 Auteur
 
-**[Ton Nom]**  
+**Boustar Mohamed**  
 Étudiant en 3ème année - Ingénierie Data Science & Cloud Computing  
 École Nationale des Sciences Appliquées d'Oujda (ENSAO)
 
