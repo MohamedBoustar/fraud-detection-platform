@@ -97,7 +97,7 @@ const FileUploader = ({ onUpload, isLoading }) => {
       {/* Titre */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          📤 Upload Fichier CSV
+           Upload Fichier CSV
         </h2>
         <p className="text-gray-600">
           Glissez-déposez votre fichier CSV ou cliquez pour sélectionner
@@ -270,7 +270,7 @@ const FileUploader = ({ onUpload, isLoading }) => {
               </>
             ) : (
               <>
-                🚀 Analyser
+                 Analyser
               </>
             )}
           </button>

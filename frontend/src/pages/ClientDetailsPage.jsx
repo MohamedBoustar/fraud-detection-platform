@@ -12,15 +12,12 @@ const ClientDetailsPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Récupère les données depuis localStorage
     const storedClient = localStorage.getItem('selectedClient');
     
     if (storedClient) {
       try {
         const parsedClient = JSON.parse(storedClient);
         setClientData(parsedClient);
-        
-        // Nettoie localStorage après utilisation
         localStorage.removeItem('selectedClient');
       } catch (error) {
         console.error('Erreur parsing client data:', error);
@@ -52,9 +49,12 @@ const ClientDetailsPage = () => {
           <div className="mt-6 text-center">
             <a
               href="/batch"
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-block"
+              className="inline-flex items-center bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
             >
-              ← Retour à l'Analyse Batch
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Retour à l'Analyse Batch
             </a>
           </div>
         </div>
@@ -71,9 +71,12 @@ const ClientDetailsPage = () => {
         <div className="mb-6">
           <a
             href="/batch"
-            className="text-blue-600 hover:text-blue-700 font-medium inline-flex items-center"
+            className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium transition-colors"
           >
-            ← Retour aux résultats
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Retour aux résultats
           </a>
         </div>
 

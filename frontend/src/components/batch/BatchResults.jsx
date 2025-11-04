@@ -65,7 +65,7 @@ const BatchResults = ({ data }) => {
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          📊 Résultats de l'Analyse
+           Résultats de l'Analyse
         </h2>
         <p className="text-gray-600">
           Fichier : <span className="font-semibold">{data.filename}</span>
