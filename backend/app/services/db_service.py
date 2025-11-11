@@ -84,6 +84,8 @@ def create_batch_upload(
     batch = BatchUpload(
         filename=filename,
         file_size_mb=file_size_mb,
+        s3_file_key=s3_file_key,      # ⭐ NOUVEAU
+        s3_file_url=s3_file_url,      # ⭐ NOUVEAU
         total_clients=total_clients,
         fraud_detected=fraud_detected,
         fraud_percentage=fraud_percentage,
@@ -252,9 +254,11 @@ def save_batch_predictions(
     db: Session,
     filename: str,
     file_size_mb: float,
-    predictions_data: List[Dict[str, Any]],
+    predictions_data: list,
     threshold_used: float,
-    data_period_days: Optional[int] = None
+    data_period_days: Optional[int] = None,
+    s3_file_key: Optional[str] = None,     # ⭐ NOUVEAU
+    s3_file_url: Optional[str] = None      # ⭐ NOUVEAU
 ) -> str:
     """
     Sauvegarde un batch complet de prédictions

@@ -14,6 +14,8 @@ from app.ml.predictor import predictor
 from app.ml.preprocessing import FraudPreprocessor
 from app.database import get_db
 from app.services import db_service
+from app.services.cloud_storage import s3_service
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +91,7 @@ async def predict_batch(
 ):
     """
     Prédiction batch : Upload un CSV et obtient les prédictions
-    ⭐ NOUVEAU : Sauvegarde automatiquement dans PostgreSQL
+    ⭐ NOUVEAU : Sauvegarde automatiquement dans PostgreSQL + AWS S3
     
     Format CSV attendu :
     - Colonne CONS_NO (obligatoire) : ID unique du client
@@ -112,6 +114,28 @@ async def predict_batch(
         logger.info(f"📤 Upload fichier : {file.filename}")
         contents = await file.read()
         file_size_mb = len(contents) / (1024 * 1024)
+        
+        # ⭐ NOUVEAU : Upload vers S3 si activé
+        s3_file_key = None
+        s3_file_url = None
+        
+        if settings.USE_S3_STORAGE and s3_service:
+            try:
+                logger.info(f"☁️ Upload vers S3 : {file.filename}")
+                s3_file_key = s3_service.upload_file(contents, file.filename)
+                
+                if s3_file_key:
+                    # Génère URL présignée valide 7 jours
+                    s3_file_url = s3_service.generate_presigned_url(s3_file_key, expiration=604800)
+                    logger.info(f"✅ Fichier uploadé vers S3 : {s3_file_key}")
+                else:
+                    logger.warning(f"⚠️ Échec upload S3 pour {file.filename}")
+                    
+            except Exception as s3_error:
+                logger.error(f"❌ Erreur S3 : {s3_error}")
+                # Continue même si S3 échoue
+        
+        # Parse le CSV
         df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
         
         logger.info(f"📊 Fichier chargé : {len(df)} clients, {len(df.columns)} colonnes")
@@ -131,7 +155,7 @@ async def predict_batch(
         
         logger.info(f"🎯 Prédictions : {fraud_count}/{len(results)} fraudeurs ({fraud_percentage:.1f}%)")
         
-        # ⭐ NOUVEAU : Sauvegarde dans la base de données
+        # ⭐ NOUVEAU : Sauvegarde dans la base de données AVEC S3
         batch_id = None
         try:
             # Prépare les données avec features
@@ -156,14 +180,16 @@ async def predict_batch(
                 
                 predictions_data.append(pred_dict)
             
-            # Sauvegarde le batch complet
+            # Sauvegarde le batch complet (AVEC s3_file_key et s3_file_url)
             batch_id = db_service.save_batch_predictions(
                 db=db,
                 filename=file.filename,
                 file_size_mb=file_size_mb,
                 predictions_data=predictions_data,
                 threshold_used=threshold if threshold else 0.5,
-                data_period_days=metadata.get('data_days')
+                data_period_days=metadata.get('data_days'),
+                s3_file_key=s3_file_key,  # ⭐ NOUVEAU
+                s3_file_url=s3_file_url   # ⭐ NOUVEAU
             )
             
             logger.info(f"💾 Batch sauvegardé en DB avec ID : {batch_id}")
@@ -177,6 +203,9 @@ async def predict_batch(
             "filename": file.filename,
             "batch_id": batch_id,
             "saved_to_db": batch_id is not None,
+            "s3_uploaded": s3_file_key is not None,  # ⭐ NOUVEAU
+            "s3_file_key": s3_file_key,              # ⭐ NOUVEAU
+            "s3_file_url": s3_file_url,              # ⭐ NOUVEAU
             "metadata": metadata,
             "summary": {
                 "total_clients": len(results),
