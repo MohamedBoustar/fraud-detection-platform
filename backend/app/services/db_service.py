@@ -76,7 +76,9 @@ def create_batch_upload(
     fraud_detected: int,
     fraud_percentage: float,
     threshold_used: float,
-    data_period_days: Optional[int] = None
+    data_period_days: Optional[int] = None,
+    s3_file_key: Optional[str] = None,     # ⭐ AJOUTÉ
+    s3_file_url: Optional[str] = None      # ⭐ AJOUTÉ
 ) -> BatchUpload:
     """
     Crée un enregistrement de batch upload
@@ -84,8 +86,8 @@ def create_batch_upload(
     batch = BatchUpload(
         filename=filename,
         file_size_mb=file_size_mb,
-        s3_file_key=s3_file_key,      # ⭐ NOUVEAU
-        s3_file_url=s3_file_url,      # ⭐ NOUVEAU
+        s3_file_key=s3_file_key,      # ⭐ AJOUTÉ
+        s3_file_url=s3_file_url,      # ⭐ AJOUTÉ
         total_clients=total_clients,
         fraud_detected=fraud_detected,
         fraud_percentage=fraud_percentage,
@@ -257,8 +259,8 @@ def save_batch_predictions(
     predictions_data: list,
     threshold_used: float,
     data_period_days: Optional[int] = None,
-    s3_file_key: Optional[str] = None,     # ⭐ NOUVEAU
-    s3_file_url: Optional[str] = None      # ⭐ NOUVEAU
+    s3_file_key: Optional[str] = None,     # ⭐ AJOUTÉ
+    s3_file_url: Optional[str] = None      # ⭐ AJOUTÉ
 ) -> str:
     """
     Sauvegarde un batch complet de prédictions
@@ -270,6 +272,8 @@ def save_batch_predictions(
         predictions_data: Liste des prédictions avec features
         threshold_used: Seuil utilisé
         data_period_days: Nombre de jours de données
+        s3_file_key: Chemin du fichier dans S3
+        s3_file_url: URL présignée du fichier
         
     Returns:
         batch_id: ID du batch créé
@@ -288,7 +292,9 @@ def save_batch_predictions(
         fraud_detected=fraud_detected,
         fraud_percentage=fraud_percentage,
         threshold_used=threshold_used,
-        data_period_days=data_period_days
+        data_period_days=data_period_days,
+        s3_file_key=s3_file_key,      # ⭐ AJOUTÉ
+        s3_file_url=s3_file_url       # ⭐ AJOUTÉ
     )
     
     # Sauvegarde chaque prédiction
