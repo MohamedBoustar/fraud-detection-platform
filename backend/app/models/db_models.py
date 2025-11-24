@@ -93,6 +93,7 @@ class Prediction(Base):
 
 
 # ========== TABLE 3 : BATCH UPLOADS ==========
+# ========== TABLE 3 : BATCH UPLOADS ==========
 class BatchUpload(Base):
     """
     Table des uploads batch
@@ -104,6 +105,10 @@ class BatchUpload(Base):
     # Informations fichier
     filename = Column(String, nullable=False)
     file_size_mb = Column(Float, nullable=True)
+    
+    # AWS S3 Storage (nouvelles colonnes)
+    s3_file_key = Column(String, nullable=True)  # Chemin dans S3
+    s3_file_url = Column(Text, nullable=True)    # URL présignée
     
     # Statistiques
     total_clients = Column(Integer, nullable=False)
@@ -123,7 +128,6 @@ class BatchUpload(Base):
     
     def __repr__(self):
         return f"<BatchUpload {self.filename}>"
-
 
 # ========== TABLE 4 : FEEDBACKS ==========
 class Feedback(Base):

@@ -39,10 +39,14 @@ class Settings:
         "http://127.0.0.1:5173",
     ]
     
-    # AWS (optionnel, pour plus tard)
+    # AWS S3 Configuration
     AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID", "")
     AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", "")
+    AWS_REGION: str = os.getenv("AWS_REGION", "eu-west-3")
     AWS_BUCKET_NAME: str = os.getenv("AWS_BUCKET_NAME", "")
+    
+    # Feature: Enable/Disable S3 Storage
+    USE_S3_STORAGE: bool = os.getenv("USE_S3_STORAGE", "True").lower() == "true"
 
 # Instance unique
 settings = Settings()
@@ -58,11 +62,29 @@ def verify_setup():
     if not settings.SCALER_PATH.exists():
         errors.append(f"❌ Scaler non trouvé : {settings.SCALER_PATH}")
     
+    # Vérifier AWS S3 si activé
+    if settings.USE_S3_STORAGE:
+        if not settings.AWS_ACCESS_KEY_ID:
+            errors.append("⚠️ AWS_ACCESS_KEY_ID manquant (S3 désactivé)")
+            settings.USE_S3_STORAGE = False
+        if not settings.AWS_SECRET_ACCESS_KEY:
+            errors.append("⚠️ AWS_SECRET_ACCESS_KEY manquant (S3 désactivé)")
+            settings.USE_S3_STORAGE = False
+        if not settings.AWS_BUCKET_NAME:
+            errors.append("⚠️ AWS_BUCKET_NAME manquant (S3 désactivé)")
+            settings.USE_S3_STORAGE = False
+    
     if errors:
         for error in errors:
             print(error)
-        raise FileNotFoundError("Fichiers de modèles ML manquants !")
+        if "❌" in " ".join(errors):
+            raise FileNotFoundError("Fichiers de modèles ML manquants !")
     
     print("✅ Configuration vérifiée avec succès")
     print(f"✅ Modèle trouvé : {settings.MODEL_PATH}")
     print(f"✅ Scaler trouvé : {settings.SCALER_PATH}")
+    
+    if settings.USE_S3_STORAGE:
+        print(f"✅ AWS S3 activé : {settings.AWS_BUCKET_NAME} ({settings.AWS_REGION})")
+    else:
+        print("⚠️ AWS S3 désactivé - Stockage local uniquement")
