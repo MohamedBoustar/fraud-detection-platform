@@ -7,9 +7,10 @@ from contextlib import asynccontextmanager
 import logging
 from app.database import init_db
 
-
 from app.config import settings, verify_setup
 from app.ml.predictor import predictor
+from app.services.realtime_service import initialize_realtime_service
+from app.services.mqtt_consumer import initialize_mqtt_consumer
 
 # Configuration du logging
 logging.basicConfig(
@@ -48,16 +49,37 @@ async def lifespan(app: FastAPI):
     # ⭐ NOUVEAU : Initialise la base de données
     init_db()
     
+    # ⭐ NOUVEAU : Initialiser le service realtime WebSocket
+    logger.info("🔔 Initialisation du service Realtime...")
+    realtime_service = initialize_realtime_service(max_history=100)
+    app.state.realtime_service = realtime_service
+    
+    # ⭐ NOUVEAU : Démarrer le Consumer MQTT
+    logger.info("📡 Démarrage du Consumer MQTT...")
+    mqtt_success = await initialize_mqtt_consumer(realtime_service=realtime_service)
+    
+    if mqtt_success:
+        logger.info("✅ Consumer MQTT démarré avec succès")
+    else:
+        logger.warning("⚠️ Consumer MQTT: impossible de se connecter (mais l'API continue)")
+    
     logger.info("=" * 50)
     logger.info("✅ API prête ! Serveur démarré avec succès")
     logger.info(f"📍 Environnement : {'DEBUG' if settings.DEBUG else 'PRODUCTION'}")
     logger.info(f"🔗 Documentation : http://localhost:{settings.API_PORT}/docs")
+    logger.info(f"📡 Realtime : {len(realtime_service.connected_clients)} clients connectés")
     logger.info("=" * 50)
     
     yield  # L'application tourne ici
     
     # 🛑 SHUTDOWN
     logger.info("🛑 Arrêt de l'API...")
+    
+    # Arrêter le consumer MQTT
+    from app.services.mqtt_consumer import get_mqtt_consumer
+    consumer = get_mqtt_consumer()
+    if consumer:
+        consumer.stop()
 
 
 # Création de l'application FastAPI
@@ -95,6 +117,7 @@ async def root():
             "realtime_prediction": "/api/predictions/realtime",
             "model_info": "/api/predictions/model/info",
             "features_info": "/api/predictions/model/features",
+            "realtime_stats": "/api/realtime/stats",
             "docs": "/docs"
         }
     }
@@ -107,6 +130,105 @@ async def health_check():
         "status": "healthy",
         "service": "fraud-detection-api"
     }
+
+
+# ========== ROUTES REALTIME ==========
+
+@app.get("/api/realtime/stats")
+async def get_realtime_stats():
+    """Obtenir les statistiques du service realtime"""
+    from app.services.realtime_service import get_realtime_service
+    realtime_service = get_realtime_service()
+    
+    if not realtime_service:
+        return {"error": "Realtime service not initialized"}
+    
+    # Aussi inclure les stats du consumer MQTT
+    from app.services.mqtt_consumer import get_mqtt_consumer
+    mqtt_consumer = get_mqtt_consumer()
+    
+    return {
+        "realtime": realtime_service.get_stats(),
+        "mqtt_consumer": mqtt_consumer.get_stats() if mqtt_consumer else None,
+    }
+
+
+@app.get("/api/realtime/history")
+async def get_realtime_history(limit: int = 50):
+    """Obtenir l'historique des prédictions récentes"""
+    from app.services.realtime_service import get_realtime_service
+    realtime_service = get_realtime_service()
+    
+    if not realtime_service:
+        return {"error": "Realtime service not initialized"}
+    
+    return {
+        "history": realtime_service.get_history(limit=limit),
+        "count": len(realtime_service.message_queue),
+    }
+
+
+# ========== WEBSOCKET ENDPOINT ==========
+
+from fastapi import WebSocket, WebSocketDisconnect
+import uuid
+
+@app.websocket("/ws/realtime")
+async def websocket_endpoint(websocket: WebSocket):
+    """
+    WebSocket pour les prédictions temps réel
+    Les clients se connectent ici pour recevoir les prédictions en direct
+    """
+    client_id = str(uuid.uuid4())
+    
+    await websocket.accept()
+    logger.info(f"✅ WebSocket connecté: {client_id}")
+    
+    from app.services.realtime_service import get_realtime_service
+    realtime_service = get_realtime_service()
+    
+    if realtime_service:
+        realtime_service.add_client(client_id)
+        
+        # Envoyer le message de bienvenue
+        welcome_message = {
+            "type": "welcome",
+            "client_id": client_id,
+            "message": "Connecté au service de prédictions temps réel",
+            "stats": realtime_service.get_stats(),
+        }
+        
+        try:
+            await websocket.send_json(welcome_message)
+        except Exception as e:
+            logger.error(f"Erreur envoi message bienvenue: {e}")
+    
+    try:
+        # Garder la connexion ouverte et recevoir les messages
+        while True:
+            # Attendre un message du client (pour keep-alive)
+            data = await websocket.receive_text()
+            
+            if data == "ping":
+                # Répondre au ping
+                await websocket.send_json({"type": "pong"})
+            elif data == "stats":
+                # Envoyer les stats
+                if realtime_service:
+                    await websocket.send_json({
+                        "type": "stats",
+                        "data": realtime_service.get_stats()
+                    })
+    
+    except WebSocketDisconnect:
+        logger.info(f"👋 WebSocket déconnecté: {client_id}")
+        if realtime_service:
+            realtime_service.remove_client(client_id)
+    
+    except Exception as e:
+        logger.error(f"❌ Erreur WebSocket: {e}")
+        if realtime_service:
+            realtime_service.remove_client(client_id)
 
 
 # ========== IMPORT DES ROUTES ==========

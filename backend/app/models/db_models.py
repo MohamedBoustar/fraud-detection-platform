@@ -192,3 +192,66 @@ class RawFeature(Base):
     
     def __repr__(self):
         return f"<RawFeature for {self.client_id}>"
+
+
+# ========== TABLE 5 : PRÉDICTIONS TEMPS RÉEL MQTT ==========
+class RealtimePrediction(Base):
+    """
+    Table des prédictions temps réel à partir des flux MQTT
+    (IoT sensors / smart meters)
+    """
+    __tablename__ = "realtime_predictions"
+    
+    # Clé primaire
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    
+    # Source des données
+    meter_id = Column(String, nullable=False, index=True)  # ID du capteur/compteur
+    source = Column(Enum(PredictionSourceEnum), default=PredictionSourceEnum.REALTIME)
+    
+    # Données du capteur
+    consumption_kw = Column(Float, nullable=True)
+    voltage_v = Column(Float, nullable=True)
+    current_a = Column(Float, nullable=True)
+    power_factor = Column(Float, nullable=True)
+    frequency_hz = Column(Float, nullable=True)
+    is_night = Column(Boolean, default=False)
+    hour = Column(Integer, nullable=True)
+    anomaly_score = Column(Float, nullable=True)
+    
+    # Prédictions
+    is_fraud = Column(Boolean, nullable=False, index=True)
+    fraud_probability = Column(Float, nullable=False)  # Score 0-1
+    risk_level = Column(String, nullable=True)  # MINIMAL, LOW, MEDIUM, HIGH, CRITICAL
+    
+    # Métadonnées
+    features_json = Column(Text, nullable=True)  # Features en JSON
+    raw_data_json = Column(Text, nullable=True)  # Données brutes MQTT
+    
+    # Client associé (si connu)
+    client_id = Column(String, ForeignKey("clients.id"), nullable=True, index=True)
+    
+    # Timestamps
+    sensor_timestamp = Column(DateTime, nullable=True)  # Timestamp du capteur
+    prediction_timestamp = Column(DateTime, default=func.now(), index=True)  # Quand la prédiction a été faite
+    
+    # Feedback utilisateur (optionnel)
+    feedback_type = Column(Enum(FeedbackTypeEnum), nullable=True)
+    feedback_timestamp = Column(DateTime, nullable=True)
+    feedback_notes = Column(Text, nullable=True)
+    
+    # Version du modèle
+    model_version = Column(String, nullable=True)  # Ex: "1.0.0"
+    
+    def __repr__(self):
+        return f"<RealtimePrediction {self.meter_id} {'🔴 FRAUD' if self.is_fraud else '✅ NORMAL'}>"
+
+
+# ========== INDICE POUR LES REQUÊTES FRÉQUENTES ==========
+# Index pour les requêtes temps réel
+from sqlalchemy import Index
+
+# Prédictions par mètre et timestamp
+Index('idx_realtime_meter_timestamp', 
+      RealtimePrediction.meter_id, 
+      RealtimePrediction.prediction_timestamp)
