@@ -19,6 +19,9 @@ psycopg2-binary>=2.9.9
 python-socketio>=5.11.0
 websockets>=12.0
 
+# MQTT IoT
+paho-mqtt>=1.6.1
+
 # Utilitaires
 python-dotenv>=1.0.0
 pydantic>=2.6.0
