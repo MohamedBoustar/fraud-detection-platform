@@ -72,9 +72,12 @@ class MQTTClient:
             self.is_connected = True
             logger.info(f"✅ Connecté au broker MQTT: {self.broker_host}:{self.broker_port}")
             
-            # S'abonner aux topics de capteurs
-            client.subscribe(self.sensor_topic, qos=1)
-            logger.info(f"📡 Abonné au topic: {self.sensor_topic}")
+            # S'abonner aux topics de capteurs (seulement si on a un callback)
+            if self.message_callback:
+                # Remplacer "meter_+" par un wildcard compatible
+                topic = self.sensor_topic.replace("meter_+", "#")
+                client.subscribe(topic, qos=1)
+                logger.info(f"📡 Abonné au topic: {topic}")
         else:
             logger.error(f"❌ Erreur de connexion MQTT (code {rc})")
             self.is_connected = False
