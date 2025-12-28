@@ -3,6 +3,8 @@ import Navbar from './components/layout/Navbar';
 import BatchPage from './pages/BatchPage';
 import ClientDetailsPage from './pages/ClientDetailsPage';
 import HistoryPage from './pages/HistoryPage';
+import RealtimePage from './pages/RealtimePage';
+import DashboardPage from './pages/DashboardPage';
 
 // Icônes SVG
 const SearchIcon = () => (
@@ -61,6 +63,12 @@ function App() {
     }
     if (path === '/history') {
       return <HistoryPage />;
+    }
+    if (path === '/realtime') {
+      return <RealtimePage />;
+    }
+    if (path === '/dashboard') {
+      return <DashboardPage />;
     }
 
     // ========== PAGE D'ACCUEIL - NOUVEAU DESIGN ==========

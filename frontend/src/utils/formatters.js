@@ -121,10 +121,10 @@ export const formatFileSize = (bytes) => {
  */
 export const formatRiskLevel = (riskLevel) => {
   const levels = {
-    LOW: { text: 'Faible', color: '#10B981', icon: '🟢' },
-    MEDIUM: { text: 'Moyen', color: '#F59E0B', icon: '🟡' },
-    HIGH: { text: 'Élevé', color: '#EF4444', icon: '🔴' },
-    CRITICAL: { text: 'Critique', color: '#DC2626', icon: '🔴🔴' },
+    LOW: { text: 'Faible', color: '#10B981', icon: '' },
+    MEDIUM: { text: 'Moyen', color: '#F59E0B', icon: '' },
+    HIGH: { text: 'Élevé', color: '#EF4444', icon: '' },
+    CRITICAL: { text: 'Critique', color: '#DC2626', icon: '' },
   };
   
   return levels[riskLevel] || levels.LOW;
@@ -152,7 +152,7 @@ export const formatPredictionLabel = (prediction) => {
     return {
       text: 'FRAUDEUR',
       color: '#EF4444',
-      icon: '🚨',
+      icon: '',
       bgColor: '#FEE2E2',
     };
   }
@@ -160,7 +160,7 @@ export const formatPredictionLabel = (prediction) => {
   return {
     text: 'NORMAL',
     color: '#10B981',
-    icon: '✅',
+    icon: '',
     bgColor: '#D1FAE5',
   };
 };

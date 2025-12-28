@@ -50,7 +50,12 @@ class MQTTClient:
         
         # Client MQTT
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id)
-        self.client.username_pw_set(self.username, self.password)
+        
+        # Définir les credentials seulement si fournis
+        if self.username and self.password:
+            self.client.username_pw_set(self.username, self.password)
+        elif self.username:
+            self.client.username_pw_set(self.username)
         
         # Callbacks
         self.client.on_connect = self._on_connect

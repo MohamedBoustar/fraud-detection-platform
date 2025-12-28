@@ -63,6 +63,24 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("⚠️ Consumer MQTT: impossible de se connecter (mais l'API continue)")
     
+    # ⭐ SIMULATEUR AUTO : Démarrer le simulateur IoT
+    logger.info("🎮 Démarrage du simulateur IoT automatique...")
+    try:
+        from app.iot.sensor_simulator import SensorSimulator
+        simulator = SensorSimulator(
+            num_meters=3,         # 3 compteurs virtuels (réduit)
+            publish_interval=6,   # Envoie toutes les 6 secondes (plus lent)
+            anomaly_rate=0.10     # 10% de fraudes
+        )
+        if simulator.connect():
+            simulator.run_async()  # Démarre dans un thread séparé
+            app.state.simulator = simulator
+            logger.info("✅ Simulateur IoT démarré (3 compteurs, intervalle 6s)")
+        else:
+            logger.warning("⚠️ Simulateur: impossible de se connecter au broker MQTT")
+    except Exception as e:
+        logger.warning(f"⚠️ Simulateur non démarré: {e}")
+    
     logger.info("=" * 50)
     logger.info("✅ API prête ! Serveur démarré avec succès")
     logger.info(f"📍 Environnement : {'DEBUG' if settings.DEBUG else 'PRODUCTION'}")
@@ -74,6 +92,11 @@ async def lifespan(app: FastAPI):
     
     # 🛑 SHUTDOWN
     logger.info("🛑 Arrêt de l'API...")
+    
+    # Arrêter le simulateur
+    if hasattr(app.state, 'simulator') and app.state.simulator:
+        app.state.simulator.stop()
+        logger.info("✅ Simulateur arrêté")
     
     # Arrêter le consumer MQTT
     from app.services.mqtt_consumer import get_mqtt_consumer
@@ -190,12 +213,13 @@ async def websocket_endpoint(websocket: WebSocket):
     if realtime_service:
         realtime_service.add_client(client_id)
         
-        # Envoyer le message de bienvenue
+        # Envoyer le message de bienvenue avec l'historique
         welcome_message = {
             "type": "welcome",
             "client_id": client_id,
             "message": "Connecté au service de prédictions temps réel",
             "stats": realtime_service.get_stats(),
+            "history": realtime_service.get_history(limit=50),  # Inclure l'historique
         }
         
         try:

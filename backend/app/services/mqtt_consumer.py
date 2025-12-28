@@ -95,16 +95,14 @@ class MQTTConsumer:
             
             # ============ PRÉDICTION ML ============
             
-            # Préparer les données
-            features = self._extract_features(payload)
-            
             if not predictor.is_loaded:
                 logger.error("❌ Modèle ML non chargé")
                 self.errors += 1
                 return
             
-            # Faire la prédiction
-            prediction_result = predictor.predict(features)
+            # Faire la prédiction avec les données IoT temps réel
+            # predict_realtime() génère les features statistiques à partir des valeurs instantanées
+            prediction_result = predictor.predict_realtime(payload)
             
             if not prediction_result:
                 logger.error(f"❌ Erreur prédiction pour {meter_id}")
@@ -113,6 +111,7 @@ class MQTTConsumer:
             
             is_fraud = prediction_result.get("is_fraud", False)
             fraud_probability = prediction_result.get("fraud_probability", 0.0)
+            features = prediction_result.get("features", {})
             
             self.predictions_made += 1
             
@@ -247,8 +246,16 @@ class MQTTConsumer:
                 "consumption_kw": round(consumption, 3),
             }
             
-            # Broadcast
-            self.realtime_service.broadcast(message)
+            # Broadcast - utiliser asyncio pour appeler la fonction async
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.ensure_future(self.realtime_service.broadcast(message))
+                else:
+                    loop.run_until_complete(self.realtime_service.broadcast(message))
+            except RuntimeError:
+                # Pas de loop, créer une nouvelle
+                asyncio.run(self.realtime_service.broadcast(message))
             
             logger.debug(f"📡 Message WebSocket envoyé: {meter_id}")
             

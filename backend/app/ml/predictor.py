@@ -202,6 +202,108 @@ class FraudPredictor:
         else:
             return "CRITICAL"
     
+    def predict_realtime(self, iot_data: Dict[str, float], threshold: float = None) -> Dict:
+        """
+        Prédiction temps réel à partir de données IoT instantanées
+        Génère des features statistiques simulées basées sur les valeurs capteur
+        
+        Args:
+            iot_data: Données IoT (consumption_kw, voltage_v, current_a, etc.)
+            threshold: Seuil de classification
+            
+        Returns:
+            Dict avec is_fraud, fraud_probability, risk_level
+        """
+        try:
+            consumption = iot_data.get("consumption_kw", 5.0)
+            voltage = iot_data.get("voltage_v", 230.0)
+            power_factor = iot_data.get("power_factor", 0.95)
+            anomaly_score = iot_data.get("anomaly_score", 0.0)
+            
+            # Générer des features statistiques simulées basées sur les valeurs IoT
+            # La logique : des valeurs anormales → features anormales
+            
+            base_mean = consumption
+            
+            # Détection d'anomalies basée sur les valeurs IoT
+            voltage_anomaly = abs(voltage - 230) / 230  # Écart par rapport à 230V
+            pf_anomaly = max(0, 0.95 - power_factor)  # Power factor trop bas
+            
+            # Score d'anomalie combiné
+            combined_anomaly = anomaly_score + voltage_anomaly + pf_anomaly
+            
+            # Générer les 15 features statistiques
+            features = {
+                'mean_consumption': base_mean,
+                'std_consumption': base_mean * (0.1 + combined_anomaly * 0.5),
+                'median_consumption': base_mean * (0.95 + combined_anomaly * 0.1),
+                'max_consumption': base_mean * (1.5 + combined_anomaly * 2),
+                'cv': 0.15 + combined_anomaly * 0.8,  # Coefficient de variation
+                'zero_ratio': combined_anomaly * 0.3,  # Ratio de zéros suspect
+                'zero_days': int(combined_anomaly * 10),
+                'trend': combined_anomaly * 0.5 - 0.1,  # Tendance
+                'n_peaks': int(2 + combined_anomaly * 5),  # Nombre de pics
+                'max_consecutive_zeros': int(combined_anomaly * 5),
+                'skewness': combined_anomaly * 2,
+                'kurtosis': combined_anomaly * 3,
+                'q25': base_mean * 0.75,
+                'q75': base_mean * 1.25,
+                'iqr': base_mean * 0.5
+            }
+            
+            # Utiliser predict_single avec les features générées
+            result = self.predict_single(features, threshold)
+            
+            return {
+                "is_fraud": result.get("prediction") == 1,
+                "fraud_probability": result.get("probability", 0.0),
+                "risk_level": result.get("risk_level", "UNKNOWN"),
+                "threshold_used": result.get("threshold_used"),
+                "label": result.get("label", "UNKNOWN"),
+                "source": "realtime",
+                "features": features  # Inclure les features générées
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Erreur predict_realtime: {e}")
+            return None
+
+    def predict(self, features: Dict[str, float], threshold: float = None) -> Dict:
+        """
+        Prédiction intelligente - détecte automatiquement le type de données
+        
+        Args:
+            features: Dict des features (IoT ou statistiques)
+            threshold: Seuil de classification
+            
+        Returns:
+            Dict avec is_fraud, fraud_probability, risk_level
+        """
+        try:
+            # Détecter si c'est des données IoT ou des features statistiques
+            iot_keys = {'consumption_kw', 'voltage_v', 'current_a', 'power_factor'}
+            stat_keys = {'mean_consumption', 'std_consumption', 'median_consumption'}
+            
+            has_iot = any(k in features for k in iot_keys)
+            has_stats = any(k in features for k in stat_keys)
+            
+            if has_iot and not has_stats:
+                # Données IoT → utiliser predict_realtime
+                return self.predict_realtime(features, threshold)
+            else:
+                # Features statistiques → utiliser predict_single
+                result = self.predict_single(features, threshold)
+                return {
+                    "is_fraud": result.get("prediction") == 1,
+                    "fraud_probability": result.get("probability", 0.0),
+                    "risk_level": result.get("risk_level", "UNKNOWN"),
+                    "threshold_used": result.get("threshold_used"),
+                    "label": result.get("label", "UNKNOWN")
+                }
+        except Exception as e:
+            logger.error(f"❌ Erreur predict: {e}")
+            return None
+    
     def get_model_info(self) -> Dict:
         """
         Retourne les informations sur le modèle chargé

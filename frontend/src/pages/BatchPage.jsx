@@ -26,11 +26,11 @@ const BatchPage = () => {
       // Appel API
       const data = await predictBatch(file, threshold);
       
-      console.log('✅ Résultats reçus:', data);
+      console.log('Résultats reçus:', data);
       setResults(data);
       
     } catch (err) {
-      console.error('❌ Erreur:', err);
+      console.error('Erreur:', err);
       
       const errorMessage = err.response?.data?.detail 
         || err.message 

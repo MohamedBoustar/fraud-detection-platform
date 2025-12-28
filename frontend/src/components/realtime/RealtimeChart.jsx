@@ -16,7 +16,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import useRealtimeData from '../hooks/useRealtimeData';
+import useRealtimeData from '../../hooks/useRealtimeData';
 
 const RealtimeChart = ({ type = 'line', limit = 30 }) => {
   const realtime = useRealtimeData();

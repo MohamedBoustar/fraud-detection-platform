@@ -51,7 +51,7 @@ const BatchCard = ({ batch, onViewDetails, onDelete }) => {
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
           <h3 className="text-lg font-bold text-gray-900 mb-1">
-            📄 {batch.filename}
+            {batch.filename}
           </h3>
           <p className="text-sm text-gray-500">
             {formatDate(batch.upload_timestamp, 'datetime')}
@@ -64,7 +64,7 @@ const BatchCard = ({ batch, onViewDetails, onDelete }) => {
             ? 'bg-green-100 text-green-800' 
             : 'bg-yellow-100 text-yellow-800'
         }`}>
-          {batch.status === 'completed' ? '✅ Terminé' : '⏳ En cours'}
+          {batch.status === 'completed' ? 'Terminé' : 'En cours'}
         </span>
       </div>
 
@@ -103,7 +103,7 @@ const BatchCard = ({ batch, onViewDetails, onDelete }) => {
             className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
             disabled={isDeleting}
           >
-            👁️ Voir Détails
+            Voir Détails
           </button>
           
           <button
@@ -112,7 +112,7 @@ const BatchCard = ({ batch, onViewDetails, onDelete }) => {
             title="Voir JSON"
             disabled={isDeleting}
           >
-            📋 API
+            API
           </button>
 
           <button
@@ -121,27 +121,27 @@ const BatchCard = ({ batch, onViewDetails, onDelete }) => {
             title="Supprimer"
             disabled={isDeleting}
           >
-            {isDeleting ? '⏳' : '🗑️'}
+            {isDeleting ? '...' : 'X'}
           </button>
         </div>
       ) : (
         /* Confirmation de suppression */
         <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
           <p className="text-sm font-semibold text-red-900 mb-3">
-            ⚠️ Êtes-vous sûr de vouloir supprimer ce batch ?
+            Êtes-vous sûr de vouloir supprimer ce batch ?
           </p>
           <div className="flex space-x-3">
             <button
               onClick={handleDelete}
               className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors"
             >
-              ✓ Oui, supprimer
+              Oui, supprimer
             </button>
             <button
               onClick={handleCancelDelete}
               className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors"
             >
-              ✕ Annuler
+              Annuler
             </button>
           </div>
         </div>

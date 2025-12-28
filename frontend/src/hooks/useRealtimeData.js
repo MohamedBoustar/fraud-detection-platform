@@ -25,12 +25,12 @@ const useRealtimeData = (url = null) => {
   // Connecter au WebSocket
   const connect = useCallback(() => {
     try {
-      console.log('🔗 Connexion WebSocket...', finalUrl);
+      console.log('Connexion WebSocket...', finalUrl);
 
       const ws = new WebSocket(finalUrl);
 
       ws.onopen = () => {
-        console.log('✅ WebSocket connecté');
+        console.log('WebSocket connecté');
         setIsConnected(true);
         setError(null);
         reconnectAttemptsRef.current = 0;
@@ -39,7 +39,7 @@ const useRealtimeData = (url = null) => {
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.debug('📨 Message reçu:', message.type);
+          console.debug('Message reçu:', message.type);
 
           if (message.type === 'welcome') {
             // Message de bienvenue
@@ -60,27 +60,27 @@ const useRealtimeData = (url = null) => {
 
             // Mettre à jour stats
             if (message.is_fraud) {
-              console.warn('🚨 FRAUDE DÉTECTÉE:', message.meter_id);
+              console.warn('FRAUDE DÉTECTÉE:', message.meter_id);
             }
           } else if (message.type === 'stats') {
             // Mise à jour stats
             setStats(message.data);
           } else if (message.type === 'pong') {
             // Keep-alive
-            console.debug('💓 Keep-alive');
+            console.debug('Keep-alive');
           }
         } catch (e) {
-          console.error('❌ Erreur parsing message:', e);
+          console.error('Erreur parsing message:', e);
         }
       };
 
       ws.onerror = (error) => {
-        console.error('❌ Erreur WebSocket:', error);
+        console.error('Erreur WebSocket:', error);
         setError('Erreur WebSocket');
       };
 
       ws.onclose = () => {
-        console.log('👋 WebSocket fermé');
+        console.log('WebSocket fermé');
         setIsConnected(false);
         wsRef.current = null;
 
@@ -88,7 +88,7 @@ const useRealtimeData = (url = null) => {
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
           reconnectAttemptsRef.current += 1;
           console.log(
-            `⏱️ Reconnexion dans ${reconnectDelay / 1000}s (tentative ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`
+            `Reconnexion dans ${reconnectDelay / 1000}s (tentative ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`
           );
 
           reconnectTimeoutRef.current = setTimeout(() => {
@@ -101,7 +101,7 @@ const useRealtimeData = (url = null) => {
 
       wsRef.current = ws;
     } catch (e) {
-      console.error('❌ Erreur connexion:', e);
+      console.error('Erreur connexion:', e);
       setError('Erreur connexion WebSocket');
     }
   }, [url]);
@@ -125,7 +125,7 @@ const useRealtimeData = (url = null) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(message);
     } else {
-      console.warn('⚠️ WebSocket non connecté');
+      console.warn('WebSocket non connecté');
     }
   }, []);
 

@@ -76,7 +76,7 @@ const AlertNotification = () => {
 
   const sendBrowserNotification = (pred) => {
     if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('🚨 FRAUDE DÉTECTÉE!', {
+      new Notification('FRAUDE DÉTECTÉE!', {
         body: `Compteur ${pred.meter_id}: Score ${(
           pred.fraud_probability * 100
         ).toFixed(1)}%`,
@@ -95,7 +95,7 @@ const AlertNotification = () => {
           className={`alert alert-${alert.type}`}
         >
           <div className="alert-content">
-            <div className="alert-icon">🚨</div>
+            <div className="alert-icon">!</div>
             <div className="alert-details">
               <h4>FRAUDE DÉTECTÉE</h4>
               <p>

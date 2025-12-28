@@ -1,18 +1,15 @@
 /**
  * RealtimeDashboard - Dashboard des prédictions temps réel
- * Affiche les prédictions en direct avec alertes
+ * Affiche les données et prédictions de manière claire et visuelle
  */
 
 import React, { useState } from 'react';
 import useRealtimeData from '../../hooks/useRealtimeData';
-import RiskBadge from '../common/RiskBadge';
-import LoadingSpinner from '../common/LoadingSpinner';
-import RealtimeChart from './RealtimeChart';
 import './RealtimeDashboard.css';
 
 const RealtimeDashboard = () => {
   const realtime = useRealtimeData();
-  const [filterFraud, setFilterFraud] = useState(null); // null = all, true = fraude, false = normal
+  const [filterFraud, setFilterFraud] = useState(null);
 
   // Filtrer les prédictions
   const filteredPredictions = realtime.predictions.filter((p) => {
@@ -20,178 +17,174 @@ const RealtimeDashboard = () => {
     return p.is_fraud === filterFraud;
   });
 
-  // Déterminer la couleur du statut de connexion
-  const statusColor = realtime.isConnected ? 'green' : 'red';
+  // Formater le timestamp
+  const formatTime = (timestamp) => {
+    if (!timestamp) return '--:--:--';
+    return new Date(timestamp).toLocaleTimeString('fr-FR');
+  };
 
   return (
     <div className="realtime-dashboard">
       {/* Header */}
       <div className="realtime-header">
         <div className="header-left">
-          <h1>📊 Dashboard Temps Réel</h1>
-          <p>Prédictions de fraude en direct</p>
+          <h1>Détection Temps Réel</h1>
+          <p>Surveillance des compteurs électriques</p>
         </div>
 
-        <div className="header-right">
-          {/* Statut de connexion */}
-          <div className="connection-status">
-            <div
-              className="status-indicator"
-              style={{ backgroundColor: statusColor }}
-            />
-            <span>
-              {realtime.isConnected ? '🟢 Connecté' : '🔴 Déconnecté'}
-            </span>
-          </div>
-
-          {/* Client ID */}
-          {realtime.clientId && (
-            <div className="client-info">
-              <small>Client ID: {realtime.clientId.substring(0, 8)}...</small>
-            </div>
-          )}
+        <div className={`connection-badge ${realtime.isConnected ? 'connected' : 'disconnected'}`}>
+          <span className="pulse"></span>
+          {realtime.isConnected ? 'CONNECTÉ' : 'DÉCONNECTÉ'}
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-value">{realtime.predictions.length}</div>
-          <div className="stat-label">Prédictions reçues</div>
+      {/* Stats principales */}
+      <div className="main-stats">
+        <div className="stat-box total">
+          <div className="stat-number">{realtime.predictions.length}</div>
+          <div className="stat-text">PRÉDICTIONS</div>
         </div>
-
-        <div className="stat-card fraud">
-          <div className="stat-value">{realtime.fraudCount}</div>
-          <div className="stat-label">🚨 Fraudes détectées</div>
+        <div className="stat-box fraud">
+          <div className="stat-number">{realtime.fraudCount}</div>
+          <div className="stat-text">FRAUDES</div>
         </div>
-
-        <div className="stat-card normal">
-          <div className="stat-value">{realtime.normalCount}</div>
-          <div className="stat-label">✅ Normal</div>
+        <div className="stat-box normal">
+          <div className="stat-number">{realtime.normalCount}</div>
+          <div className="stat-text">NORMAUX</div>
         </div>
-
-        <div className="stat-card">
-          <div className="stat-value">{realtime.avgScore}</div>
-          <div className="stat-label">Score moyen</div>
+        <div className="stat-box avg">
+          <div className="stat-number">{realtime.avgScore}%</div>
+          <div className="stat-text">SCORE MOYEN</div>
         </div>
       </div>
-
-      {/* Erreur */}
-      {realtime.error && (
-        <div className="error-banner">
-          <span>❌ {realtime.error}</span>
-          <button onClick={realtime.connect}>Reconnecter</button>
-        </div>
-      )}
 
       {/* Filtres */}
-      <div className="filters">
+      <div className="filter-buttons">
         <button
-          className={`filter-btn ${filterFraud === null ? 'active' : ''}`}
+          className={filterFraud === null ? 'active' : ''}
           onClick={() => setFilterFraud(null)}
         >
           Tous ({realtime.predictions.length})
         </button>
         <button
-          className={`filter-btn fraud ${filterFraud === true ? 'active' : ''}`}
+          className={`fraud-btn ${filterFraud === true ? 'active' : ''}`}
           onClick={() => setFilterFraud(true)}
         >
-          🚨 Fraudes ({realtime.fraudCount})
+          Fraudes ({realtime.fraudCount})
         </button>
         <button
-          className={`filter-btn normal ${filterFraud === false ? 'active' : ''}`}
+          className={`normal-btn ${filterFraud === false ? 'active' : ''}`}
           onClick={() => setFilterFraud(false)}
         >
-          ✅ Normal ({realtime.normalCount})
+          Normaux ({realtime.normalCount})
         </button>
       </div>
 
-      {/* Section Graphiques */}
-      <div className="charts-section">
-        <h2>📈 Analyse Graphique</h2>
-        <RealtimeChart type="line" limit={30} />
-        <RealtimeChart type="bar" limit={20} />
-      </div>
-
-      {/* Liste des prédictions */}
-      <div className="predictions-container">
+      {/* Tableau des prédictions */}
+      <div className="predictions-table-container">
         {filteredPredictions.length === 0 ? (
-          <div className="empty-state">
-            <LoadingSpinner />
-            <p>En attente des prédictions...</p>
+          <div className="waiting-state">
+            <div className="spinner"></div>
+            <p>En attente des données des capteurs...</p>
+            <small>Le simulateur envoie des données automatiquement</small>
           </div>
         ) : (
-          <div className="predictions-list">
-            {filteredPredictions.map((pred, idx) => (
-              <div
-                key={idx}
-                className={`prediction-card ${
-                  pred.is_fraud ? 'fraud' : 'normal'
-                }`}
-              >
-                {/* Alerte fraude */}
-                {pred.is_fraud && (
-                  <div className="fraud-alert">
-                    🚨 FRAUDE DÉTECTÉE
-                  </div>
-                )}
-
-                {/* Contenu */}
-                <div className="prediction-content">
-                  {/* Gauche - Info compteur */}
-                  <div className="prediction-info">
-                    <div className="meter-id">
-                      📊 {pred.meter_id}
-                    </div>
-                    <div className="timestamp">
-                      {new Date(pred.timestamp).toLocaleTimeString('fr-FR')}
-                    </div>
-                    <div className="consumption">
-                      ⚡ {pred.consumption_kw?.toFixed(2)}kW
-                    </div>
-                  </div>
-
-                  {/* Centre - Scores */}
-                  <div className="prediction-scores">
-                    <div className="score-row">
-                      <span>Score fraude:</span>
-                      <strong>{(pred.fraud_probability * 100).toFixed(1)}%</strong>
-                    </div>
-                    <div className="score-bar">
-                      <div
-                        className="score-fill"
+          <table className="predictions-table">
+            <thead>
+              <tr>
+                <th>STATUT</th>
+                <th>COMPTEUR</th>
+                <th>HEURE</th>
+                <th>CONSOMMATION</th>
+                <th>SCORE FRAUDE</th>
+                <th>RISQUE</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPredictions.slice(0, 50).map((pred, idx) => (
+                <tr key={idx} className={pred.is_fraud ? 'fraud-row' : 'normal-row'}>
+                  <td className="status-cell">
+                    {pred.is_fraud ? (
+                      <span className="status-fraud">FRAUDE</span>
+                    ) : (
+                      <span className="status-normal">OK</span>
+                    )}
+                  </td>
+                  <td className="meter-cell">
+                    <strong>{pred.meter_id}</strong>
+                  </td>
+                  <td className="time-cell">
+                    {formatTime(pred.timestamp)}
+                  </td>
+                  <td className="consumption-cell">
+                    <span className={pred.consumption_kw > 100 ? 'high-value' : ''}>
+                      {pred.consumption_kw?.toFixed(1)} kW
+                    </span>
+                  </td>
+                  <td className="score-cell">
+                    <div className="score-bar-container">
+                      <div 
+                        className="score-bar-fill"
                         style={{
                           width: `${pred.fraud_probability * 100}%`,
-                          backgroundColor: pred.is_fraud ? '#ef4444' : '#10b981',
+                          backgroundColor: pred.fraud_probability > 0.5 ? '#ef4444' : 
+                                          pred.fraud_probability > 0.3 ? '#f59e0b' : '#10b981'
                         }}
-                      />
+                      ></div>
+                      <span className="score-text">
+                        {(pred.fraud_probability * 100).toFixed(0)}%
+                      </span>
                     </div>
-                  </div>
-
-                  {/* Droite - Badge */}
-                  <div className="prediction-badge">
-                    <RiskBadge
-                      riskLevel={pred.risk_level || 'MINIMAL'}
-                      score={pred.fraud_probability}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                  </td>
+                  <td className="risk-cell">
+                    <span className={`risk-badge ${pred.risk_level?.toLowerCase()}`}>
+                      {pred.risk_level || 'N/A'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 
-      {/* Footer - Stats serveur */}
-      {realtime.stats && (
-        <div className="server-stats">
-          <small>
-            🖥️ Clients connectés: {realtime.stats.connected_clients} | 
-            Messages: {realtime.stats.messages_sent} | 
-            Pic: {realtime.stats.peak_clients}
-          </small>
+      {/* Dernière fraude détectée */}
+      {realtime.fraudCount > 0 && (
+        <div className="last-fraud-alert">
+          <h3>Dernière Fraude Détectée</h3>
+          {(() => {
+            const lastFraud = realtime.predictions.find(p => p.is_fraud);
+            if (!lastFraud) return null;
+            return (
+              <div className="fraud-details">
+                <div className="fraud-detail">
+                  <span>Compteur:</span>
+                  <strong>{lastFraud.meter_id}</strong>
+                </div>
+                <div className="fraud-detail">
+                  <span>Consommation:</span>
+                  <strong>{lastFraud.consumption_kw?.toFixed(1)} kW</strong>
+                </div>
+                <div className="fraud-detail">
+                  <span>Score:</span>
+                  <strong className="fraud-score">{(lastFraud.fraud_probability * 100).toFixed(0)}%</strong>
+                </div>
+                <div className="fraud-detail">
+                  <span>Heure:</span>
+                  <strong>{formatTime(lastFraud.timestamp)}</strong>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
+
+      {/* Footer */}
+      <div className="dashboard-footer">
+        <span>{realtime.stats?.connected_clients || 0} clients</span>
+        <span>{realtime.stats?.messages_sent || 0} messages</span>
+        <span>Mise à jour en temps réel</span>
+      </div>
     </div>
   );
 };

@@ -16,7 +16,7 @@ const BatchDetailsModal = ({ batch, predictions, onClose }) => {
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-2xl font-bold mb-2">
-                📄 {batch.filename}
+                {batch.filename}
               </h2>
               <p className="text-blue-100">
                 Uploadé le {formatDate(batch.upload_timestamp, 'datetime')}
@@ -58,7 +58,7 @@ const BatchDetailsModal = ({ batch, predictions, onClose }) => {
         {/* Liste des Prédictions */}
         <div className="flex-1 overflow-y-auto p-6">
           <h3 className="text-lg font-bold text-gray-900 mb-4">
-            📋 Prédictions ({predictions?.length || 0})
+            Prédictions ({predictions?.length || 0})
           </h3>
 
           {predictions && predictions.length > 0 ? (
