@@ -29,7 +29,7 @@ Thumbs.db
 
 # Environment (données sensibles)
 .env
-
+.env.local
 # Models ML (trop gros)
 *.pkl
 *.joblib
