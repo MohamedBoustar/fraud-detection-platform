@@ -250,7 +250,7 @@ ws.onmessage = (event) => {
 
 ## Rapport Technique
 
-Un rapport complet (30 pages) est disponible en LaTeX: `rapport/rapport_resume.tex`
+Un rapport complet (30 pages) a ete ridige 
 
 Couverture:
 - Chapitre 1: Introduction et contexte
