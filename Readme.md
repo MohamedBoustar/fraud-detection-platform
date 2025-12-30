@@ -279,20 +279,14 @@ Couverture:
 
 ## Auteur
 
-Mohamed Boustar (Hamito)
+Mohamed Boustar
 
-## Encadrant
 
-Pr. K. Azghiou
 
 ## Établissement
 
-Université Mohammed Premier
-École Nationale des Sciences Appliquées d'Oujda
+École Nationale des Sciences Appliquées d'Oujda // 
 Filière: Ingénierie Data Science & Cloud Computing (IDSCC)
 
-Oujda, Décembre 2025
 
-## License
 
-Propriétaire - ENSAO
