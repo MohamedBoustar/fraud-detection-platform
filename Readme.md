@@ -1,5 +1,9 @@
 # Fraud Detection Platform
 
+<p align="center">
+  <img src="./assets/fdp.jpg" alt="Logo Fraud Detection Platform" width="360">
+</p>
+
 > Plateforme intelligente de détection de fraude électrique combinant Machine Learning, IoT, MQTT et application web full-stack.
 
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
